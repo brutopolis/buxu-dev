@@ -2,5 +2,5 @@ cd buxu
 cp -rf ../bruter .
 rm -rf bruter/.git .buxu
 ./build.sh --install --debug
-bpm install-from http://127.0.0.1:3000/packages io math std os string ffi
-./build.sh --debug-file example/hello_world.br
+bpm install-from http://127.0.0.1:3000/packages io math std os string dycc
+./build.sh --debug-file example/loops.br
