@@ -5,3 +5,7 @@ packages
 .vscode
 valgring-out*
 .bupm
+republicavelha/include
+republicavelha/lib
+republicavelha/minifb
+*.brl
