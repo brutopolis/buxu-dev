@@ -1,5 +1,5 @@
 cd buxu
 cp -rf ../bruter .
-cp -rf ../br .
+cp -rf ../bruter-representation .
 rm -rf bruter/.git
 ./build.sh --install
