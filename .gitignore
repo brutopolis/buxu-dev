@@ -3,9 +3,10 @@ buxu
 packages
 .buxu
 .vscode
-valgring-out*
+valgrind-out*
 .bupm
 republicavelha/include
 republicavelha/lib
 republicavelha/minifb
 *.brl
+massif*
