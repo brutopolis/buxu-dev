@@ -1,4 +1,4 @@
-#include "br.h"
+#include <bruter-representation.h>
 #include <math.h>
 #include <float.h>
 
@@ -153,7 +153,7 @@ uint8_t **generate_heightmap(int nbIters, unsigned int seed, float p1, float p2,
 #define WIDTH 512
 #define HEIGHT 512
 
-INIT(terrain)
+BR_INIT(terrain)
 {
     srand((unsigned int) time(NULL));
 
