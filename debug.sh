@@ -8,7 +8,7 @@ gcc -o buxu.bin ./buxu/buxu.c -ldl -g
 sudo mv buxu.bin /usr/bin/buxu
 
 
-bupm install-from localhost:3000/packages io math std os string dycc bit byte condition list alloc #bsr
+bupm install-from localhost:3000/packages io math std os string dycc bit byte condition list alloc type #bsr
 
 valgrind --tool=massif --stacks=yes --detailed-freq=1 --verbose  buxu $1
 ms_print massif.out.* > ./massif-out.txt
