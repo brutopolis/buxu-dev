@@ -1,5 +1,13 @@
 #!/bin/bash
-CC="gcc -O3 -g"
+CC="gcc -std=c99 -pedantic -Wall -Wextra -Werror \
+    -Wstrict-prototypes -Wold-style-definition \
+    -Wmissing-prototypes -Wmissing-declarations \
+    -Wredundant-decls -Wnested-externs \
+    -Wcast-qual -Wcast-align -Wwrite-strings \
+    -Wconversion -Wshadow -Wlogical-op \
+    -Waggregate-return -Wstrict-overflow=5 \
+    -Wswitch-default -Wswitch-enum \
+    -Wunreachable-code -Wfloat-equal"
 
 source install.sh
 

@@ -1,10 +1,7 @@
 #!/bin/bash
-CC="gcc -O3 -g"
-
+source /opt/AMD/aocc-compiler-5.0.0/setenv_AOCC.sh
+CC="clang -g -Ofast -flto -fopenmp -mavx2 -ffastlib=AMDLIBM -lamdlibmfast -march=native -lamdalloc-ext -lamdlibm -lm" bupm install-from localhost:3000/packages io math std os string dycc bit byte condition list alloc type #bsr
 source install.sh
-
-
-CC="$CC" bupm install-from localhost:3000/packages io math std os string dycc bit byte condition list alloc type #bsr
 
 valgrind --tool=massif --stacks=yes --detailed-freq=1 --verbose  buxu $1
 ms_print massif.out.* > ./massif-out.txt
