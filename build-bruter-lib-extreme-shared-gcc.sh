@@ -1,7 +1,7 @@
 #!/bin/bash
 cd bruter
 cp bruter.h bruter.c
-gcc -o teste.so bruter.c -shared -DBRUTER_AS_LIB \
+gcc -o teste.so bruter.c -shared -DBRUTER_AS_SOURCE \
 -O3 \
 -std=c99 \
 -pedantic \

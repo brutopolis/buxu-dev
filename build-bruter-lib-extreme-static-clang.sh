@@ -1,7 +1,7 @@
 #!/bin/bash
 cd bruter
 cp bruter.h bruter.c
-clang -o teste.o bruter.c -c -DBRUTER_AS_LIB \
+clang -o teste.o bruter.c -c -DBRUTER_AS_SOURCE \
 -std=c99 \
 -pedantic\
 -errors   \

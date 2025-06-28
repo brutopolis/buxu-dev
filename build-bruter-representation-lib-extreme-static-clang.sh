@@ -1,7 +1,7 @@
 #!/bin/bash
 cd bruter-representation
 cp bruter-representation.h bruter-representation.c
-clang -o teste.o bruter-representation.c -c -DBRUTER_AS_LIB \
+clang -o teste.o bruter-representation.c -c -DBRUTER_AS_SOURCE \
 -std=c99 \
 -pedantic\
 -errors   \

@@ -1,7 +1,7 @@
 #!/bin/bash
 cd bruter
 cp bruter.h bruter.c
-clang -o teste.so bruter.c -shared -DBRUTER_AS_LIB \
+clang -o teste.so bruter.c -shared -DBRUTER_AS_SOURCE \
 -fPIC \
 -std=c99 \
 -pedantic\
