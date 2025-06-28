@@ -1,0 +1,196 @@
+#!/bin/bash
+cd bruter
+cp bruter.h bruter.c
+gcc -o teste.o bruter.c -c -DBRUTER_AS_LIB \
+-O3 \
+-std=c99 \
+-pedantic \
+-Wall \
+-Wextra \
+-Werror     \
+-Winline \
+-Wunused\
+-function \
+-Wunused     \
+-Wstrict\
+-prototypes \
+-Wold\
+-style\
+-definition     \
+-Wmissing\
+-prototypes \
+-Wmissing\
+-declarations     \
+-Wredundant\
+-decls \
+-Wnested\
+-externs     \
+-Wcast\
+-qual \
+-Wcast\
+-align \
+-Wwrite\
+-strings     \
+-Wconversion \
+-Wshadow \
+-Wlogical\
+-op     \
+-Waggregate\
+-return \
+-Wstrict\
+-overflow=5     \
+-Wswitch\
+-default \
+-Wswitch\
+-enum     \
+-Wunreachable\
+-code \
+-Wfloat\
+-equal         \
+-Wformat=2 \
+-Wformat\
+-security \
+-Wformat\
+-nonliteral     \
+-Wformat\
+-y2k \
+-Wformat\
+-overflow=2 \
+-Wformat\
+-truncation=2         \
+-Wvla \
+-Wvla\
+-larger\
+-than=1024     \
+-Walloca \
+-Walloc\
+-zero \
+-Walloc\
+-size\
+-larger\
+-than=1048576         \
+-Wduplicated\
+-branches \
+-Wduplicated\
+-cond     \
+-Wtrampolines \
+-Wstack\
+-protector     \
+-Wunsafe\
+-loop\
+-optimizations         \
+-Wbad\
+-function\
+-cast \
+-Wc++\
+-compat     \
+-Wjump\
+-misses\
+-init \
+-Wlogical\
+-not\
+-parentheses     \
+-Wmissing\
+-field\
+-initializers \
+-Wmissing\
+-include\
+-dirs         \
+-Wnull\
+-dereference \
+-Wshift\
+-overflow=2     \
+-Wshift\
+-count\
+-negative \
+-Wshift\
+-count\
+-overflow     \
+-Wshift\
+-negative\
+-value         \
+-Wstringop\
+-overflow=4 \
+-Wstringop\
+-truncation     \
+-Warray\
+-bounds=2 \
+-Wattribute\
+-alias=2         \
+-Wdangling\
+-else \
+-Wdate\
+-time     \
+-Wdisabled\
+-optimization \
+-Wdouble\
+-promotion         \
+-Winit\
+-self \
+-Winvalid\
+-pch     \
+-Wmultichar \
+-Woverlength\
+-strings         \
+-Wpacked \
+-Wpacked\
+-bitfield\
+-compat     \
+-Wpadded \
+-Wpointer\
+-arith         \
+-Wsign\
+-compare \
+-Wsign\
+-conversion     \
+-Wstack\
+-usage=8192         \
+-Wswitch\
+-bool \
+-Wsync\
+-nand     \
+-Wtautological\
+-compare \
+-Wundef         \
+-Wunused\
+-but\
+-set\
+-parameter \
+-Wunused\
+-but\
+-set\
+-variable     \
+-Wunused\
+-const\
+-variable=2 \
+-Wunused\
+-local\
+-typedefs     \
+-Wunused\
+-macros \
+-Wunused\
+-result         \
+-Wvarargs \
+-Wvector\
+-operation\
+-performance     \
+-Wvolatile\
+-register\
+-var \
+-Wwrite\
+-strings \
+-Warith\
+-conversion     \
+-Wbidi\
+-chars     \
+-Wopenacc\
+-parallelism     \
+-Wtrivial\
+-auto\
+-var\
+-init
+rm bruter.c
+cd ..
+echo '10 Jehovah doth reign to the age, Thy God, O Zion, to generation and generation, Praise ye Jah! 
+- Psalms 146:10
+'

@@ -1,0 +1,99 @@
+#!/bin/bash
+cd bruter
+cp bruter.h bruter.c
+clang -o teste.so bruter.c -shared -DBRUTER_AS_LIB \
+-fPIC \
+-std=c99 \
+-pedantic\
+-errors   \
+-Wall \
+-Wextra \
+-Werror \
+-Weverything   \
+-Wno\
+-unsafe\
+-buffer\
+-usage   \
+-Wno\
+-padded   \
+-Wno\
+-disabled\
+-macro\
+-expansion   \
+-Wno\
+-reserved\
+-id\
+-macro   \
+-Wno\
+-documentation   \
+-Wstrict\
+-prototypes   \
+-Wcast\
+-align   \
+-Wcast\
+-qual   \
+-Wwrite\
+-strings   \
+-Wbad\
+-function\
+-cast   \
+-Wmissing\
+-prototypes   \
+-Wmissing\
+-declarations   \
+-Wunreachable\
+-code   \
+-Wfloat\
+-equal   \
+-Wshadow   \
+-Wundef   \
+-Wconversion   \
+-Wsign\
+-conversion   \
+-Wno\
+-sign\
+-compare   \
+-Wswitch\
+-enum   \
+-Wcovered\
+-switch\
+-default   \
+-Wstrict\
+-aliasing   \
+-Wredundant\
+-decls   \
+-Wnested\
+-externs   \
+-Wno\
+-newline\
+-eof   \
+-Wdouble\
+-promotion   \
+-Wold\
+-style\
+-definition   \
+-Wshorten\
+-64\
+-to\
+-32   \
+-Wthread\
+-safety   \
+-Wvla   \
+-Wdocumentation\
+-deprecated\
+-sync   \
+-fstrict\
+-aliasing   \
+-fvisibility=hidden   \
+-fsanitize=undefined   \
+-fsanitize=address   \
+-fstack\
+-protector\
+-strong   \
+-fno\
+-common
+rm bruter.c
+cd ..
+echo '5 From the straitness I called Jah, Jah answered me in a broad place.
+- Psalms 118:5 
+'
