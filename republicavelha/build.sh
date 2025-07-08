@@ -1,1 +1,0 @@
-bucc terrain.c -o terrain.brl -lm -lX11 -lGL -lminifb -I./include -L./lib

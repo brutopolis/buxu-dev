@@ -4,7 +4,7 @@ CC="gcc -O3 -g"
 source install.sh
 
 
-CC="$CC" bupm install-from localhost:3000/packages io math std os string dycc bit byte condition list alloc type bruterlang #bsr
+CC="$CC" bpm install-from localhost:3000/packages io math std os string dycc bit byte condition list alloc type bruterlang #bsr
 
 valgrind --tool=massif --stacks=yes --detailed-freq=1 --verbose  buxu -lbruterlang $1
 ms_print massif.out.* > ./massif-out.txt

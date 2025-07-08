@@ -5,6 +5,7 @@ packages
 .vscode
 valgrind-out*
 .bupm
+.bpm
 republicavelha/include
 republicavelha/lib
 republicavelha/minifb
