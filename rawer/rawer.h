@@ -1,146 +1,87 @@
 #ifndef RAWER_H
 #define RAWER_H 1
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdbool.h>
-#include <inttypes.h>
-#include <ctype.h>
+#include <bruter.h>
 
-#define STATIC_INLINE  
+#define RAWER_VERSION "0.0.1"
 
-typedef intptr_t Int;
-typedef uintptr_t UInt;
+enum {
+    BR_TYPE_NULL = 0,
+    BR_TYPE_ANY,
+    BR_TYPE_FLOAT,
+    BR_TYPE_BUFFER,
+    BR_TYPE_LIST,
+    BR_TYPE_FUNCTION
+};
 
-#if INTPTR_MAX == INT64_MAX
-    typedef double Float;
-#else
-    typedef float Float;
-#endif
-
-typedef struct 
+static inline BruterList* string_split(char *input_str)
 {
-    int capacity;
-    int size;
-    Int data[];
-} Stack;
-
-typedef struct 
-{
-    Stack *values;
-
-    Stack *ref_names;
-    Stack *ref_indexes;
-} VirtualMachine;
-
-typedef void (*Function)(Stack *stack);
-
-static inline Stack* stack_new(int size)
-{
-    Stack *stack = (Stack*)malloc(sizeof(Stack) + size * sizeof(Int));
-    if (stack == NULL)
-    {
-        fprintf(stderr, "ERROR: Failed to allocate memory for Stack\n");
-        exit(EXIT_FAILURE);
-    }
-    stack->capacity = size;
-    stack->size = 0;
-    return stack;
-}
-
-static inline void stack_free(Stack *stack)
-{
-    free(stack);
-}
-
-static inline void stack_push(Stack *stack, Int value)
-{
-    if (stack->size >= stack->capacity)
-    {
-        fprintf(stderr, "ERROR: Stack overflow\n");
-        exit(EXIT_FAILURE);
-    }
-    stack->data[stack->size++] = value;
-}
-
-static inline Int stack_pop(Stack *stack)
-{
-    if (stack->size <= 0)
-    {
-        fprintf(stderr, "ERROR: Stack underflow\n");
-        exit(EXIT_FAILURE);
-    }
-    return stack->data[--stack->size];
-}
-
-static inline VirtualMachine* vm_new(int size)
-{
-    VirtualMachine *vm = (VirtualMachine*)malloc(sizeof(VirtualMachine));
-    if (vm == NULL)
-    {
-        fprintf(stderr, "ERROR: Failed to allocate memory for VirtualMachine\n");
-        exit(EXIT_FAILURE);
-    }
-    vm->values = stack_new(size);
-    vm->ref_names = stack_new(size);
-    vm->ref_indexes = stack_new(size);
-    return vm;
-}
-
-static inline void vm_free(VirtualMachine *vm)
-{
-    stack_free(vm->values);
-    stack_free(vm->ref_names);
-    stack_free(vm->ref_indexes);
-    free(vm);
-}
-
-static inline Stack* string_split(char *input_str)
-{
-    char* str = strdup(input_str);
-    if (str == NULL || *str == '\0')
+    if (input_str == NULL || *input_str == '\0')
     {
         return stack_new(0);
     }
 
-    Stack *stack = stack_new(2);
-    stack_push(stack, (intptr_t)str);
+    char* str = strdup(input_str);
+    if (!str) {
+        perror("strdup failed");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Splitting string: '%s'\n", str);
+
+    BruterList *stack = bruter_new(2, false, false);
+    char *ptr = str;
+    bruter_push_pointer(stack, str, NULL, 0); // Push the original string for cleanup later
+
     int recursion = 0;
-    while (*str != '\0')
+    while (*ptr != '\0')
     {
-        if (isspace((unsigned char)*str) && recursion == 0)
+        printf("Current char: '%c'\n", *ptr);
+
+        if (isspace((unsigned char)*ptr) && recursion == 0)
         {
-            *str = '\0';
-            str++;
-            while (*str && isspace((unsigned char)*str)) str++;
-            if (*str != '\0')
+            *ptr = '\0';  // Quebra a palavra
+            ptr++;
+
+            // Pula espaços consecutivos
+            while (*ptr && isspace((unsigned char)*ptr)) ptr++;
+
+            if (*ptr != '\0')
             {
-                stack_push(stack, (intptr_t)str);
+                // Push the current token onto the stack
+                bruter_push_pointer(stack, ptr, NULL, 0);
             }
+            else
+            {
+                // If we hit the end of the string, we can break
+                break;
+            }
+
+            continue;
         }
-        else if (*str == '(')
+        else if (*ptr == '(')
         {
             recursion++;
         }
-        else if (*str == ')')
+        else if (*ptr == ')')
         {
             recursion--;
             if (recursion < 0)
             {
                 fprintf(stderr, "ERROR: Unmatched parentheses in string\n");
+                free(str);
                 stack_free(stack);
                 exit(EXIT_FAILURE);
             }
         }
-        
-        str++;
+
+        ptr++;
     }
 
     if (recursion != 0)
     {
         fprintf(stderr, "ERROR: Unmatched parentheses in string\n");
+        free(str);
         stack_free(stack);
         exit(EXIT_FAILURE);
     }
@@ -148,23 +89,60 @@ static inline Stack* string_split(char *input_str)
     return stack;
 }
 
-static inline Stack* parse(VirtualMachine *context, char* input_str)
+
+static inline BruterList* parse(BruterList *context, char* input_str)
 {
-    Stack *tokens = string_split(input_str);
-    if (tokens->size == 0)
+    BruterList *result = string_split(input_str);
+    result->types = (int8_t*)calloc((size_t)result->capacity, sizeof(int8_t));
+
+    if (result->types == NULL)
     {
-        stack_free(tokens);
+        fprintf(stderr, "ERROR: Failed to allocate memory for tokens types\n");
+        stack_free(result);
+        exit(EXIT_FAILURE);
+    }
+
+    char* original_str = (char*)result->data[0].p; // Keep the original string for cleanup
+    if (result->size == 0)
+    {
+        stack_free(result);
         return NULL;
     }
 
-    Stack *result = stack_new(tokens->size);
-    for (int i = 0; i < tokens->size; i++)
+    BruterList *result = bruter_new(1, false, false);
+
+    for (int i = 0; i < result->size; i++)
     {
-        char *token = (char*)tokens->data[i];
-        if (isdigit(token[0]) || (token[0] == '-' && isdigit(token[1])))
+        char *token = (char*)result->data[i].p;
+        result->types[i] = BR_TYPE_BUFFER; // Default type for strings
+
+        if ((token[0] >= '0' && token[0] <= '9') || (token[0] == '-' && isdigit(token[1]))) // number
         {
-            Int value = strtol(token, NULL, 10);
-            stack_push(result, value);
+            if (token[0] == '0' && token[1] == 'x') // hex
+            {
+                result->data[i].i = strtol(token+2, NULL, 16);
+                result->types[i] = BR_TYPE_ANY;
+            }
+            else if (token[0] == '0' && token[1] == 'b') // bin
+            {
+                result->data[i].i = strtol(token+2, NULL, 2);
+                result->types[i] = BR_TYPE_ANY;
+            }
+            else if (token[0] == '0' && token[1] == 'o') // oct
+            {
+                result->data[i].i = strtol(token+2, NULL, 8);
+                result->types[i] = BR_TYPE_ANY;
+            }
+            else if (strchr(token, '.')) // float
+            {
+                result->data[i].f = atof(token);
+                result->types[i] = BR_TYPE_FLOAT;
+            }
+            else // int
+            {
+                result->data[i].i = atol(token);
+                result->types[i] = BR_TYPE_ANY;
+            }
         }
         else if(token[0] == ':') // str
         {
@@ -172,50 +150,42 @@ static inline Stack* parse(VirtualMachine *context, char* input_str)
             if (str_value == NULL)
             {
                 fprintf(stderr, "ERROR: Failed to allocate memory for string value\n");
-                stack_free(tokens);
                 stack_free(result);
                 exit(EXIT_FAILURE);
             }
-            stack_push(result, (intptr_t)str_value);
+            result->data[i].p = str_value;
+            result->types[i] = BR_TYPE_BUFFER;
         }
         else if (token[0] == '@') // run
         {
-            Int func_index = stack_pop(result);
-            Function func = (Function)context->values->data[func_index];
-            stack_push(result, (intptr_t)context);
-            func(result);
+            bruter_push_int(result, INTPTR_MIN, NULL, 0); // Placeholder for run 
         }
         else
         {
-            Int found = -1;
-            for (Int j = 0; j < context->values->size; j++)
+            BruterInt found = bruter_find_key(context, token);
+            if (found != -1)
             {
-                if (strcmp((char*)context->ref_names->data[j], token) == 0)
+                result->data[i] = context->data[found];
+                result->types[i] = context->types[found];
+            }
+            else
+            {
+                // If not found, we can treat it as a string
+                result->data[i].p = strdup(token);
+                if (result->data[i].p == NULL)
                 {
-                    found = context->ref_indexes->data[j];
-                    break;
+                    fprintf(stderr, "ERROR: Failed to allocate memory for string token\n");
+                    stack_free(result);
+                    exit(EXIT_FAILURE);
                 }
+                result->types[i] = BR_TYPE_BUFFER;
             }
-
-            if (found == -1)
-            {
-                printf("ERROR: Undefined reference '%s'\n", token);
-            }
-            
-            stack_push(result, found);
         }
     }
 
-    free((void*)(intptr_t)tokens->data[0]); // free the original string
-    stack_free(tokens);
+    free(original_str); // free the original string
+    //stack_free(tokens);
     return result;
-}
-
-static inline void rawer_int_print(Stack *stack)
-{
-    VirtualMachine *context = (VirtualMachine*)stack_pop(stack);
-    Int value = stack_pop(context->values);
-    printf("%" PRIdPTR "\n", value);
 }
 
 #endif // RAWER_H macro
