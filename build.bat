@@ -1,1 +1,0 @@
-tcc\tcc buxu\bwin.c -o buxu.exe -Ibruter -Ibruter-representation packages\std\std.c packages\io\io.c packages\list\list.c packages\condition\condition.c packages\type\type.c packages\math\math.c
