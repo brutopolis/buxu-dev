@@ -1,23 +1,94 @@
 #include "rawer.h"
 
-void rawer_int_print(BruterList *stack)
+void rawer_print(BruterList *stack)
 {
-    BruterList *context = (BruterList*)bruter_pop_pointer(stack);
-    BruterValue value = bruter_pop(stack);
-    printf("%" PRIdPTR "\n", value.i);
+    BruterMetaValue value = bruter_pop_meta(stack);
+    switch (value.type)
+    {
+        case BR_TYPE_FLOAT:
+            printf("%f\n", value.value.f);
+            break;
+        case BR_TYPE_BUFFER:
+            printf("%s\n", (char*)value.value.p);
+            break;
+        case BR_TYPE_LIST:
+            printf("%p\n", value.value.p);
+            break;
+        default:
+            printf("%d\n", value.value.i);
+            break;
+    }
 }
 
 void rawer_add(BruterList *stack)
 {
-    BruterList *context = (BruterList*)bruter_pop_pointer(stack);
-    BruterValue a = bruter_pop(stack);
-    BruterValue b = bruter_pop(stack);
-    bruter_push_int(stack, a.i + b.i, NULL, 0);
+    BruterMetaValue a = bruter_pop_meta(stack);
+    BruterMetaValue b = bruter_pop_meta(stack);
+    switch (a.type)
+    {
+        case BR_TYPE_FLOAT:
+            switch (b.type)
+            {
+                case BR_TYPE_FLOAT:
+                    bruter_push_float(stack, a.value.f + b.value.f, NULL, BR_TYPE_FLOAT);
+                    break;
+                default:
+                    bruter_push_float(stack, a.value.f + b.value.i, NULL, BR_TYPE_FLOAT);
+                    break;
+            }
+            break;
+        default:
+            switch (b.type)
+            {
+                case BR_TYPE_FLOAT:
+                    bruter_push_float(stack, a.value.i + b.value.f, NULL, BR_TYPE_FLOAT);
+                    break;
+                default:
+                    bruter_push_int(stack, a.value.i + b.value.i, NULL, 0);
+                    break;
+            }
+            break;
+    }
 }
 
-void rawer_sub
+void rawer_sub(BruterList *stack)
+{
+    BruterMetaValue a = bruter_pop_meta(stack);
+    BruterMetaValue b = bruter_pop_meta(stack);
+    switch (a.type)
+    {
+        case BR_TYPE_FLOAT:
+            switch (b.type)
+            {
+                case BR_TYPE_FLOAT:
+                    bruter_push_float(stack, a.value.f - b.value.f, NULL, BR_TYPE_FLOAT);
+                    break;
+                default:
+                    bruter_push_float(stack, a.value.f - b.value.i, NULL, BR_TYPE_FLOAT);
+                    break;
+            }
+            break;
+        default:
+            switch (b.type)
+            {
+                case BR_TYPE_FLOAT:
+                    bruter_push_float(stack, a.value.i - b.value.f, NULL, BR_TYPE_FLOAT);
+                    break;
+                default:
+                    bruter_push_int(stack, a.value.i - b.value.i, NULL, 0);
+                    break;
+            }
+            break;
+    }
+}
 
-/*
+void rawer_register(BruterList *stack)
+{
+    BruterList *context = bruter_pop_pointer(stack);
+    BruterMetaValue meta = bruter_pop_meta(stack);
+    bruter_push_meta(context, meta);
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -26,23 +97,11 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    VirtualMachine *vm = vm_new(8);
-    Stack *tokens = string_split(argv[1]);
-    
-    if (tokens == NULL)
-    {
-        fprintf(stderr, "No tokens found in input string.\n");
-        return EXIT_FAILURE;
-    }
-
-    // Process tokens as needed
-    for (int i = 0; i < tokens->size; i++)
-    {
-        printf("Token %d: %s\n", i, (char*)tokens->data[i].p);
-    }
-
-    free(tokens->data[0].p);
-    stack_free(tokens);
+    BruterList *context = bruter_new(10, true, true);
+    bruter_push_pointer(context, rawer_print, "print", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_add, "add", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_sub, "sub", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_register, "register", BR_TYPE_FUNCTION);
+    BruterList *result = parse(context, argv[1]);
     return EXIT_SUCCESS;
 }
-*/
