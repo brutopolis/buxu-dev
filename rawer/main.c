@@ -1,93 +1,7 @@
 #include "rawer.h"
 
-void rawer_print(BruterList *stack)
-{
-    BruterMetaValue value = bruter_pop_meta(stack);
-    switch (value.type)
-    {
-        case BR_TYPE_FLOAT:
-            printf("%f\n", value.value.f);
-            break;
-        case BR_TYPE_BUFFER:
-            printf("%s\n", (char*)value.value.p);
-            break;
-        case BR_TYPE_LIST:
-            printf("%p\n", value.value.p);
-            break;
-        default:
-            printf("%d\n", value.value.i);
-            break;
-    }
-}
-
-void rawer_add(BruterList *stack)
-{
-    BruterMetaValue a = bruter_pop_meta(stack);
-    BruterMetaValue b = bruter_pop_meta(stack);
-    switch (a.type)
-    {
-        case BR_TYPE_FLOAT:
-            switch (b.type)
-            {
-                case BR_TYPE_FLOAT:
-                    bruter_push_float(stack, a.value.f + b.value.f, NULL, BR_TYPE_FLOAT);
-                    break;
-                default:
-                    bruter_push_float(stack, a.value.f + b.value.i, NULL, BR_TYPE_FLOAT);
-                    break;
-            }
-            break;
-        default:
-            switch (b.type)
-            {
-                case BR_TYPE_FLOAT:
-                    bruter_push_float(stack, a.value.i + b.value.f, NULL, BR_TYPE_FLOAT);
-                    break;
-                default:
-                    bruter_push_int(stack, a.value.i + b.value.i, NULL, 0);
-                    break;
-            }
-            break;
-    }
-}
-
-void rawer_sub(BruterList *stack)
-{
-    BruterMetaValue a = bruter_pop_meta(stack);
-    BruterMetaValue b = bruter_pop_meta(stack);
-    switch (a.type)
-    {
-        case BR_TYPE_FLOAT:
-            switch (b.type)
-            {
-                case BR_TYPE_FLOAT:
-                    bruter_push_float(stack, a.value.f - b.value.f, NULL, BR_TYPE_FLOAT);
-                    break;
-                default:
-                    bruter_push_float(stack, a.value.f - b.value.i, NULL, BR_TYPE_FLOAT);
-                    break;
-            }
-            break;
-        default:
-            switch (b.type)
-            {
-                case BR_TYPE_FLOAT:
-                    bruter_push_float(stack, a.value.i - b.value.f, NULL, BR_TYPE_FLOAT);
-                    break;
-                default:
-                    bruter_push_int(stack, a.value.i - b.value.i, NULL, 0);
-                    break;
-            }
-            break;
-    }
-}
-
-void rawer_register(BruterList *stack)
-{
-    BruterList *context = bruter_pop_pointer(stack);
-    BruterMetaValue meta = bruter_pop_meta(stack);
-    bruter_push_meta(context, meta);
-}
+//<functions>
+init(std);
 
 int main(int argc, char *argv[])
 {
@@ -97,11 +11,48 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    BruterList *context = bruter_new(10, true, true);
-    bruter_push_pointer(context, rawer_print, "print", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_add, "add", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_sub, "sub", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_register, "register", BR_TYPE_FUNCTION);
-    BruterList *result = parse(context, argv[1]);
+    BruterList *context = bruter_new(8, true, true);
+
+    //<functions_init>
+    init_std(context); // Initialize the standard functions
+
+    if (strcmp(argv[1], "eval") == 0)
+    {
+        BruterList *result = parse(context, argv[2]);
+    }
+    else if (strcmp(argv[1], "run") == 0)
+    {
+        char* filename = argv[2];
+        FILE *file = fopen(filename, "r");
+        if (!file)
+        {
+            fprintf(stderr, "ERROR: Could not open file '%s'\n", filename);
+            return EXIT_FAILURE;
+        }
+        // read the entire file into a string
+        fseek(file, 0, SEEK_END);
+        long length = ftell(file);
+        fseek(file, 0, SEEK_SET);
+        char *input_str = malloc(length + 1);
+        if (!input_str)
+        {
+            fprintf(stderr, "ERROR: Could not allocate memory for input string\n");
+            fclose(file);
+            return EXIT_FAILURE;
+        }
+        fread(input_str, 1, length, file);
+        input_str[length] = '\0'; // null-terminate the string
+        fclose(file);
+        BruterList *result = parse(context, input_str);
+        bruter_free(result); // Free the result list after use
+        free(input_str); // Free the input string after use
+    }
+    else
+    {
+        fprintf(stderr, "ERROR: Unknown command '%s'\n", argv[1]);
+        return EXIT_FAILURE;
+    }
+    clear_context(context); // Clear the context to free allocated memory
+    bruter_free(context); // Free the context after use
     return EXIT_SUCCESS;
 }

@@ -5,7 +5,7 @@
 
 #include <ctype.h>
 
-#define RAWER_VERSION "0.0.1"
+#define RAWER_VERSION "0.0.3"
 
 enum {
     BR_TYPE_NULL = 0,
@@ -14,8 +14,42 @@ enum {
     BR_TYPE_BUFFER,
     BR_TYPE_LIST,
     BR_TYPE_FUNCTION,
-    BR_TYPE_REFERENCE
 };
+
+#define function(name) \
+    void name(BruterList *stack)
+
+#define init(name) \
+    void init_##name(BruterList *context)
+
+static inline void clear_context(BruterList *context)
+{
+    for (BruterInt i = 0; i < context->size; i++)
+    {
+        switch (context->types[i])
+        {
+            case BR_TYPE_BUFFER:
+                free(context->data[i].p);
+                break;
+            case BR_TYPE_LIST:
+                bruter_free((BruterList*)context->data[i].p);
+                break;
+            case BR_TYPE_FUNCTION:
+                // No need to free function pointers
+                break;
+            default:
+                // For other types, no specific cleanup is needed
+                break;
+        }
+
+        if (context->keys && context->keys[i])
+        {
+            free(context->keys[i]); // Free the key if it was allocated
+            context->keys[i] = NULL; // Set to NULL to avoid dangling pointers
+        }
+    }
+    context->size = 0; // Reset the size to 0
+}
 
 static inline BruterList* string_split(char *input_str)
 {
@@ -125,19 +159,50 @@ static inline BruterList* parse(BruterList *context, char* input_str)
         }
         else if (token[0] == '(') // list
         {
-            char* sub_str = strndup(token + 1, strlen(token) - 2);
-            bruter_push_pointer(result, parse(context, sub_str), NULL, BR_TYPE_LIST);
-            free(sub_str); // Free the duplicated string, we don't need it anymore
-        }
-        else if(token[0] == ':') // str
-        {
-            char *str_value = strndup(token + 2, strlen(token) - 3);
-            if (str_value == NULL)
+            char *sub_str = token + 1; // Skip the '('
+            char *end_ptr = strchr(sub_str, ')');
+            if (end_ptr == NULL)
             {
-                fprintf(stderr, "ERROR: Failed to allocate memory for string value\n");
+                fprintf(stderr, "ERROR: Unmatched parentheses in list\n");
                 exit(EXIT_FAILURE);
             }
-            bruter_push_pointer(result, str_value, NULL, BR_TYPE_BUFFER);
+            *end_ptr = '\0'; // Null-terminate the list string
+            BruterList *parsed = parse(context, sub_str);
+            if (parsed->size > 1)
+            {
+                bruter_push_pointer(result, parsed, NULL, BR_TYPE_LIST);
+            }
+            else if (parsed->size == 1)
+            {
+                // If the list has only one item, push it directly
+                bruter_push_meta(result, bruter_pop_meta(parsed));
+                bruter_free(parsed); // Free the parsed list after use
+            }
+            else
+            {
+                bruter_push_pointer(result, bruter_new(0, false, false), NULL, BR_TYPE_LIST);
+            }
+        }
+        else if (token[0] == ':') //string 
+        {
+            if (token[1] == '(') 
+            {
+                char *str_value = token + 2; // Skip the ':('
+                char *end_ptr = strchr(str_value, ')');
+                if (end_ptr == NULL)
+                {
+                    fprintf(stderr, "ERROR: Unmatched parentheses in string\n");
+                    exit(EXIT_FAILURE);
+                }
+                *end_ptr = '\0'; // Null-terminate the string
+                bruter_push_pointer(result, strdup(str_value), NULL, BR_TYPE_BUFFER);
+            }
+            else 
+            {
+                char *str_value = token + 1; // Skip the ':'
+                bruter_push_pointer(result, strdup(str_value), NULL, BR_TYPE_BUFFER);
+            }
+            
         }
         else if (token[0] == '@') // run
         {
@@ -147,9 +212,14 @@ static inline BruterList* parse(BruterList *context, char* input_str)
                 // we need to insert the context into the stack too
                 // we assume the user will pop the context
                 bruter_push_pointer(result, context, NULL, BR_TYPE_NULL);
-                i++; // lets go to the next token as we inserted a new one in the current position
             }
             func(result);
+        }
+        else if (token[0] == '#') // comment
+        {
+            // Ignore comments
+            i++; // Skip the next token
+            continue;
         }
         else
         {
@@ -162,8 +232,8 @@ static inline BruterList* parse(BruterList *context, char* input_str)
             }
             else
             {
-                // If not found, we ignore it
-                printf("BR_WARN: variable '%s' not found in dictionary\n", token);
+                // If not found
+                printf("WARNING: Variable '%s' not found in context\n", token);
             }
         }
     }
