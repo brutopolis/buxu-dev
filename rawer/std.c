@@ -257,46 +257,108 @@ function(rawer_rename)
     bruter_push_meta(stack, value);
 }
 
-function(rawer_discard)
+function(rawer_retype)
+{
+    BruterInt new_type = bruter_pop_int(stack);
+    BruterMetaValue value = bruter_pop_meta(stack);
+    value.type = new_type; // Update the type of the value
+    bruter_push_meta(stack, value);
+}
+
+function(rawer_clear)
 {
     clear_context(stack);
 }
 
 function(rawer_list_pop)
 {
-    BruterList* list_value = bruter_pop_pointer(stack);
-    BruterList* list = (BruterList*)list_value;
-
-    BruterInt amount = bruter_pop_int(stack);
-
-    for (BruterInt i = 0; i < amount; i++)
-    {
-        bruter_push_meta(stack, bruter_pop_meta(list));
-    }
+    BruterList* list = bruter_pop_pointer(stack);
+    bruter_push_meta(stack, bruter_pop_meta(list));
 }
 
 function(rawer_list_push)
 {
-    BruterList* list = bruter_pop_pointer(stack);
     BruterMetaValue value = bruter_pop_meta(stack);
-    bruter_push_meta(list, value); // Push the value to the list
+    BruterList* list = bruter_pop_pointer(stack);
+    bruter_push_meta(list, value);
 }
 
 function(rawer_list_shift)
 {
-    BruterList* list_value = bruter_pop_pointer(stack);
-    BruterList* list = (BruterList*)list_value;
-
+    BruterList* list = bruter_pop_pointer(stack);
     if (list->size > 0)
     {
-        BruterMetaValue value = bruter_pop_meta(list);
-        bruter_push_meta(stack, value); // Push the shifted value to the stack
+        bruter_push_meta(stack, bruter_shift_meta(list));
     }
     else
     {
-        fprintf(stderr, "ERROR: List is empty, cannot shift\n");
+        printf("WARNING: Attempted to shift from an empty list\n");
+    }
+}
+
+function(rawer_list_unshift)
+{
+    BruterMetaValue value = bruter_pop_meta(stack);
+    BruterList* list = bruter_pop_pointer(stack);
+    bruter_unshift_meta(list, value);
+}
+
+function(rawer_list_insert)
+{
+    BruterInt index = bruter_pop_int(stack);
+    BruterMetaValue value = bruter_pop_meta(stack);
+    BruterList* list = bruter_pop_pointer(stack);
+
+    if (index < 0 || index > list->size)
+    {
+        fprintf(stderr, "ERROR: Index out of bounds for list insertion\n");
         exit(EXIT_FAILURE);
     }
+
+    bruter_insert_meta(list, index, value);
+}
+
+function(rawer_list_remove)
+{
+    BruterInt index = bruter_pop_int(stack);
+    BruterList* list = bruter_pop_pointer(stack);
+
+    if (index < 0 || index >= list->size)
+    {
+        fprintf(stderr, "ERROR: Index out of bounds for list removal\n");
+        exit(EXIT_FAILURE);
+    }
+
+    bruter_remove_meta(list, index);
+}
+
+function(rawer_list_get)
+{
+    BruterInt index = bruter_pop_int(stack);
+    BruterList* list = bruter_pop_pointer(stack);
+
+    if (index < 0 || index >= list->size)
+    {
+        fprintf(stderr, "ERROR: Index out of bounds for list access\n");
+        exit(EXIT_FAILURE);
+    }
+
+    bruter_push_meta(stack, bruter_get_meta(list, index));
+}
+
+function(rawer_list_set)
+{
+    BruterInt index = bruter_pop_int(stack);
+    BruterMetaValue value = bruter_pop_meta(stack);
+    BruterList* list = bruter_pop_pointer(stack);
+
+    if (index < 0 || index >= list->size)
+    {
+        fprintf(stderr, "ERROR: Index out of bounds for list set\n");
+        exit(EXIT_FAILURE);
+    }
+
+    bruter_set_meta(list, index, value);
 }
 
 init(std)
@@ -321,11 +383,17 @@ init(std)
     bruter_push_pointer(context, rawer_add, "add", BR_TYPE_FUNCTION);
     bruter_push_pointer(context, rawer_sub, "sub", BR_TYPE_FUNCTION);
     bruter_push_pointer(context, rawer_rename, "rename", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_retype, "retype", BR_TYPE_FUNCTION);
     bruter_push_pointer(context, rawer_register, "register", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_discard, "clear", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_clear, "clear", BR_TYPE_FUNCTION);
     bruter_push_pointer(context, rawer_list_pop, "lpop", BR_TYPE_FUNCTION);
     bruter_push_pointer(context, rawer_list_push, "lpush", BR_TYPE_FUNCTION);
     bruter_push_pointer(context, rawer_list_shift, "lshift", BR_TYPE_FUNCTION);
-    
+    bruter_push_pointer(context, rawer_list_unshift, "lunshift", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_insert, "linsert", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_remove, "lremove", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_get, "lget", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_set, "lset", BR_TYPE_FUNCTION);
+
 
 }
