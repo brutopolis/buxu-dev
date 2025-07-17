@@ -22,6 +22,13 @@ enum {
 #define init(name) \
     void init_##name(BruterList *context)
 
+#define parser_step(name) \
+    bool name(BruterList *context, BruterList *stack, BruterList *splited, BruterInt word_index)
+
+typedef void (*Function)(BruterList *stack);
+
+typedef bool (*ParserStep)(BruterList *context, BruterList *stack, BruterList *splited, BruterInt word_index);
+
 static inline void clear_context(BruterList *context)
 {
     for (BruterInt i = 0; i < context->size; i++)
@@ -121,6 +128,14 @@ static inline BruterList* string_split(char *input_str)
 
 static inline BruterList* parse(BruterList *context, char* input_str)
 {
+    BruterInt found = bruter_find_key(context, "parsers");
+    if (found == -1)
+    {
+        fprintf(stderr, "ERROR: No parsers found in context\n");
+        return NULL;
+    }
+    BruterList *parsers = bruter_get_pointer(context, found);
+
     BruterList *splited = string_split(input_str);
     BruterList *result = bruter_new(8, true, true);
 
@@ -132,108 +147,12 @@ static inline BruterList* parse(BruterList *context, char* input_str)
 
     for (int i = 0; i < splited->size; i++)
     {
-        char *token = (char*)splited->data[i].p;
-
-        if (isdigit(token[0]) || (token[0] == '-' && isdigit(token[1]))) // number
+        for (BruterInt j = 0; j < parsers->size; j++)
         {
-            if (token[0] == '0' && token[1] == 'x') // hex
+            ParserStep step = bruter_get_pointer(parsers, j);
+            if (step(context, result, splited, i))
             {
-                bruter_push_int(result, strtol(token+2, NULL, 16), NULL, BR_TYPE_ANY);
-            }
-            else if (token[0] == '0' && token[1] == 'b') // bin
-            {
-                bruter_push_int(result, strtol(token+2, NULL, 2), NULL, BR_TYPE_ANY);
-            }
-            else if (token[0] == '0' && token[1] == 'o') // oct
-            {
-                bruter_push_int(result, strtol(token+2, NULL, 8), NULL, BR_TYPE_ANY);
-            }
-            else if (strchr(token, '.')) // float
-            {
-                bruter_push_float(result, strtof(token, NULL), NULL, BR_TYPE_FLOAT);
-            }
-            else // int
-            {
-                bruter_push_int(result, strtol(token, NULL, 10), NULL, BR_TYPE_ANY);
-            }
-        }
-        else if (token[0] == '(') // list
-        {
-            char *sub_str = token + 1; // Skip the '('
-            char *end_ptr = strchr(sub_str, ')');
-            if (end_ptr == NULL)
-            {
-                fprintf(stderr, "ERROR: Unmatched parentheses in list\n");
-                exit(EXIT_FAILURE);
-            }
-            *end_ptr = '\0'; // Null-terminate the list string
-            BruterList *parsed = parse(context, sub_str);
-            if (parsed->size > 1)
-            {
-                bruter_push_pointer(result, parsed, NULL, BR_TYPE_LIST);
-            }
-            else if (parsed->size == 1)
-            {
-                // If the list has only one item, push it directly
-                bruter_push_meta(result, bruter_pop_meta(parsed));
-                bruter_free(parsed); // Free the parsed list after use
-            }
-            else
-            {
-                bruter_push_pointer(result, bruter_new(0, false, false), NULL, BR_TYPE_LIST);
-            }
-        }
-        else if (token[0] == ':') //string 
-        {
-            if (token[1] == '(') 
-            {
-                char *str_value = token + 2; // Skip the ':('
-                char *end_ptr = strchr(str_value, ')');
-                if (end_ptr == NULL)
-                {
-                    fprintf(stderr, "ERROR: Unmatched parentheses in string\n");
-                    exit(EXIT_FAILURE);
-                }
-                *end_ptr = '\0'; // Null-terminate the string
-                bruter_push_pointer(result, strdup(str_value), NULL, BR_TYPE_BUFFER);
-            }
-            else 
-            {
-                char *str_value = token + 1; // Skip the ':'
-                bruter_push_pointer(result, strdup(str_value), NULL, BR_TYPE_BUFFER);
-            }
-            
-        }
-        else if (token[0] == '@') // run
-        {
-            void (*func)(BruterList *result) = bruter_pop_pointer(result);
-            if (token[1] == '@')
-            {
-                // we need to insert the context into the stack too
-                // we assume the user will pop the context
-                bruter_push_pointer(result, context, NULL, BR_TYPE_NULL);
-            }
-            func(result);
-        }
-        else if (token[0] == '#') // comment
-        {
-            // Ignore comments
-            i++; // Skip the next token
-            continue;
-        }
-        else
-        {
-            BruterInt found = bruter_find_key(context, token);
-            if (found != -1)
-            {
-                BruterMetaValue meta = bruter_get_meta(context, found);
-                meta.key = NULL; // we don't need the key here
-                bruter_push_meta(result, meta);
-            }
-            else
-            {
-                // If not found
-                printf("WARNING: Variable '%s' not found in context\n", token);
+                break; // If a parser matched, break to the next token
             }
         }
     }
