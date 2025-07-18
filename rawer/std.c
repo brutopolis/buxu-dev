@@ -70,7 +70,7 @@ parser_step(string_parser)
 {
     char *token = (char*)splited->data[word_index].p;
 
-    if (token[0] == ':') // string 
+    if (token[0] == '#') // string 
     {
         if (token[1] == '(') 
         {
@@ -98,10 +98,10 @@ parser_step(function_run_parser)
 {
     char *token = (char*)splited->data[word_index].p;
 
-    if (token[0] == '@') // run
+    if (token[0] == '!') // run
     {
         void (*func)(BruterList *stack) = bruter_pop_pointer(stack);
-        if (token[1] == '@')
+        if (token[1] == '!')
         {
             // we need to insert the context into the stack too
             // we assume the user will pop the context
@@ -117,7 +117,7 @@ parser_step(comment_parser)
 {
     char *token = (char*)splited->data[word_index].p;
 
-    if (token[0] == '#') // comment
+    if (token[0] == 'c' && token[1] == 'o' && token[2] == 'm' && token[3] == 'm' && token[4] == 'e' && token[5] == 'n' && token[6] == 't' && token[7] == ':')
     {
         // Ignore comments
         char* next_token = bruter_remove_pointer(splited, word_index + 1);
@@ -131,23 +131,70 @@ parser_step(variable_parser)
 {
     char *token = (char*)splited->data[word_index].p;
 
-    if (isalpha(token[0]) || token[0] == '_') // variable
+    // ok its a variable but we dont know yet how the user wants to use it
+    // lets get the len of the token as it is expected not to be so long
+    size_t len = strlen(token);
+
+    if (len > 0 && token[len - 1] == '!')
     {
-        BruterInt found = bruter_find_key(context, token);
-        if (found != -1)
+        // ok its definitively a stack call
+        // lets find it first
+
+        bool need_context = false;
+
+        if (token[len - 2] == '!')
         {
-            BruterMetaValue meta = bruter_get_meta(context, found);
-            meta.key = NULL; // we don't need the key here
-            bruter_push_meta(stack, meta);
+            need_context = true; // we need to insert the context into the stack
+            token[len - 2] = '\0'; // Remove the '!!' from the
         }
         else
         {
-            // If not found
-            printf("WARNING: Variable '%s' not found in context\n", token);
+            token[len - 1] = '\0'; // Remove the '!' from the end
         }
+
+        BruterInt found = bruter_find_key(context, token);
+        if (found == -1)
+        {
+            printf("WARNING: Variable '%s' not found in context\n", token);
+            return true; // Not found, we cannot push it
+        }
+
+        // we found it, lets push it
+        BruterMetaValue meta = bruter_get_meta(context, found);
+        meta.key = NULL; // we don't need the key here
+        bruter_push_meta(stack, meta);
+
+        // lets turn the token into '!' or '!!'
+        if (need_context)
+        {
+            token[0] = '!';
+            token[1] = '!';
+            token[2] = '\0'; // Make it '!!'
+        }
+        else
+        {
+            token[0] = '!';
+            token[1] = '\0'; // Make it '!'
+        }
+
+        // now we can just pass everthing to the function step
+        function_run_parser(context, stack, splited, word_index);
         return true;
     }
-    return false; // Not a variable lets check other parsers
+
+    BruterInt found = bruter_find_key(context, token);
+    if (found != -1)
+    {
+        BruterMetaValue meta = bruter_get_meta(context, found);
+        meta.key = NULL; // we don't need the key here
+        bruter_push_meta(stack, meta);
+    }
+    else
+    {
+        // If not found
+        printf("WARNING: Variable '%s' not found in context\n", token);
+    }
+    return true;
 }
 
 // functions
@@ -273,41 +320,42 @@ function(rawer_clear)
 function(rawer_list_pop)
 {
     BruterList* list = bruter_pop_pointer(stack);
-    bruter_push_meta(stack, bruter_pop_meta(list));
+    BruterInt amount = bruter_pop_int(stack);
+    for (BruterInt i = 0; i < amount && list->size > 0; i++)
+    {
+        bruter_push_meta(stack, bruter_pop_meta(list));
+    }
 }
 
 function(rawer_list_push)
 {
-    BruterMetaValue value = bruter_pop_meta(stack);
     BruterList* list = bruter_pop_pointer(stack);
+    BruterMetaValue value = bruter_pop_meta(stack);
     bruter_push_meta(list, value);
 }
 
 function(rawer_list_shift)
 {
     BruterList* list = bruter_pop_pointer(stack);
-    if (list->size > 0)
+    BruterInt amount = bruter_pop_int(stack);
+    for (BruterInt i = 0; i < amount && list->size > 0; i++)
     {
         bruter_push_meta(stack, bruter_shift_meta(list));
-    }
-    else
-    {
-        printf("WARNING: Attempted to shift from an empty list\n");
     }
 }
 
 function(rawer_list_unshift)
 {
-    BruterMetaValue value = bruter_pop_meta(stack);
     BruterList* list = bruter_pop_pointer(stack);
+    BruterMetaValue value = bruter_pop_meta(stack);
     bruter_unshift_meta(list, value);
 }
 
 function(rawer_list_insert)
 {
+    BruterList* list = bruter_pop_pointer(stack);
     BruterInt index = bruter_pop_int(stack);
     BruterMetaValue value = bruter_pop_meta(stack);
-    BruterList* list = bruter_pop_pointer(stack);
 
     if (index < 0 || index > list->size)
     {
@@ -320,8 +368,8 @@ function(rawer_list_insert)
 
 function(rawer_list_remove)
 {
-    BruterInt index = bruter_pop_int(stack);
     BruterList* list = bruter_pop_pointer(stack);
+    BruterInt index = bruter_pop_int(stack);
 
     if (index < 0 || index >= list->size)
     {
@@ -334,8 +382,8 @@ function(rawer_list_remove)
 
 function(rawer_list_get)
 {
-    BruterInt index = bruter_pop_int(stack);
     BruterList* list = bruter_pop_pointer(stack);
+    BruterInt index = bruter_pop_int(stack);
 
     if (index < 0 || index >= list->size)
     {
@@ -348,9 +396,9 @@ function(rawer_list_get)
 
 function(rawer_list_set)
 {
+    BruterList* list = bruter_pop_pointer(stack);
     BruterInt index = bruter_pop_int(stack);
     BruterMetaValue value = bruter_pop_meta(stack);
-    BruterList* list = bruter_pop_pointer(stack);
 
     if (index < 0 || index >= list->size)
     {
@@ -363,7 +411,13 @@ function(rawer_list_set)
 
 init(std)
 {
-    BruterInt found = bruter_find_key(context, "parsers");
+    BruterInt found = bruter_find_key(context, "context");
+    if (found == -1)
+    {
+        bruter_push_pointer(context, context, "context", BR_TYPE_ANY);
+    }
+    
+    found = bruter_find_key(context, "parsers");
     if (found == -1)
     {
         bruter_push_pointer(context, bruter_new(8, true, false), "parsers", BR_TYPE_LIST);
@@ -378,7 +432,6 @@ init(std)
     bruter_push_pointer(parsers, comment_parser, "comment", BR_TYPE_FUNCTION);
     bruter_push_pointer(parsers, variable_parser, "variable", BR_TYPE_FUNCTION);
 
-
     bruter_push_pointer(context, rawer_print, "print", BR_TYPE_FUNCTION);
     bruter_push_pointer(context, rawer_add, "add", BR_TYPE_FUNCTION);
     bruter_push_pointer(context, rawer_sub, "sub", BR_TYPE_FUNCTION);
@@ -386,14 +439,19 @@ init(std)
     bruter_push_pointer(context, rawer_retype, "retype", BR_TYPE_FUNCTION);
     bruter_push_pointer(context, rawer_register, "register", BR_TYPE_FUNCTION);
     bruter_push_pointer(context, rawer_clear, "clear", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_list_pop, "lpop", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_list_push, "lpush", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_list_shift, "lshift", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_list_unshift, "lunshift", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_list_insert, "linsert", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_list_remove, "lremove", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_list_get, "lget", BR_TYPE_FUNCTION);
-    bruter_push_pointer(context, rawer_list_set, "lset", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_pop, "pop", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_push, "push", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_shift, "shift", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_unshift, "unshift", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_insert, "insert", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_remove, "remove", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_get, "get", BR_TYPE_FUNCTION);
+    bruter_push_pointer(context, rawer_list_set, "set", BR_TYPE_FUNCTION);
 
-
+    bruter_push_int(context, BR_TYPE_NULL, "Null", BR_TYPE_ANY);
+    bruter_push_int(context, BR_TYPE_ANY, "Any", BR_TYPE_ANY);
+    bruter_push_int(context, BR_TYPE_FLOAT, "Float", BR_TYPE_ANY);
+    bruter_push_int(context, BR_TYPE_BUFFER, "Buffer", BR_TYPE_ANY);
+    bruter_push_int(context, BR_TYPE_LIST, "List", BR_TYPE_ANY);
+    bruter_push_int(context, BR_TYPE_FUNCTION, "Function", BR_TYPE_ANY);
 }
