@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>rawer preprocessor</title>
+  <style>
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-bottom: 10px;
+    }
+    button {
+      display: block;
+      margin-bottom: 10px;
+    }
+  </style>
+  <script src="./rawer/rawer.js"></script>
+</head>
+<body>
+  <textarea id="input" placeholder="input..."></textarea>
+  <button id="processar">compile</button>
+  <textarea id="output" readonly></textarea>
+
+  <script>
+    const input = document.getElementById('input');
+    const output = document.getElementById('output');
+    const botao = document.getElementById('processar');
+
+    botao.addEventListener('click', () => {
+      output.value = rawer_compile(input.value);
+    });
+  </script>
+</body>
+</html>
