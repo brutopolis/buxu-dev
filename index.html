@@ -9,24 +9,18 @@
       height: 100px;
       margin-bottom: 10px;
     }
-    button {
-      display: block;
-      margin-bottom: 10px;
-    }
   </style>
   <script src="./rawer/rawer.js"></script>
 </head>
 <body>
   <textarea id="input" placeholder="input..."></textarea>
-  <button id="processar">compile</button>
   <textarea id="output" readonly></textarea>
 
   <script>
     const input = document.getElementById('input');
     const output = document.getElementById('output');
-    const botao = document.getElementById('processar');
 
-    botao.addEventListener('click', () => {
+    input.addEventListener('input', () => {
       output.value = rawer_compile(input.value);
     });
   </script>
