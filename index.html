@@ -233,7 +233,6 @@
       const inputCode = editorInput.getValue();
       const compiled = feraw_compile(inputCode);
       const expanded = feraw_expand_macros(inputCode);
-      feraw_analyze(inputCode);
       editorOutput.setValue(compiled);
       expandedInput.setValue(expanded);
     });
