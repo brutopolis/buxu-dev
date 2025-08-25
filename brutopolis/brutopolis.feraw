@@ -1,0 +1,418 @@
+include("./lib/std.feraw");
+include("./lib/bsr.feraw");
+
+new_player = macro{
+    p = list(0);
+    p.x = $1;
+    p.y = $1;
+    return p;
+};
+
+anim_idle = 0;
+anim_run = 1;
+anim_use = 2;
+
+win = new_window("brutopolis", 640, 480, 0);
+canvas = get_window_canvas(win);
+
+images = list(0);
+images.player = list(0);
+
+// IDLE
+images.player.idle = list(0);
+images.player.idle[0] = list(0);
+argb_img = load_argb("data/player/idle/0/360.argb");
+images.player.idle[0][0] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/idle/0/45.argb");
+images.player.idle[0][1] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/idle/0/90.argb");
+images.player.idle[0][2] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/idle/0/135.argb");
+images.player.idle[0][3] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/idle/0/180.argb");
+images.player.idle[0][4] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/idle/0/225.argb");
+images.player.idle[0][5] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/idle/0/270.argb");
+images.player.idle[0][6] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/idle/0/315.argb");
+images.player.idle[0][7] = argb_to_canvas(argb_img);
+free(argb_img);
+
+// RUN
+images.player.run = list(0);
+images.player.run[0] = list(0);
+argb_img = load_argb("data/player/run/0/360.argb");
+images.player.run[0][0] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/0/45.argb");
+images.player.run[0][1] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/0/90.argb");
+images.player.run[0][2] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/0/135.argb");
+images.player.run[0][3] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/0/180.argb");
+images.player.run[0][4] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/0/225.argb");
+images.player.run[0][5] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/0/270.argb");
+images.player.run[0][6] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/0/315.argb");
+images.player.run[0][7] = argb_to_canvas(argb_img);
+free(argb_img);
+
+images.player.run[1] = list(0);
+argb_img = load_argb("data/player/run/1/360.argb");
+images.player.run[1][0] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/1/45.argb");
+images.player.run[1][1] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/1/90.argb");
+images.player.run[1][2] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/1/135.argb");
+images.player.run[1][3] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/1/180.argb");
+images.player.run[1][4] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/1/225.argb");
+images.player.run[1][5] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/1/270.argb");
+images.player.run[1][6] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/1/315.argb");
+images.player.run[1][7] = argb_to_canvas(argb_img);
+free(argb_img);
+
+images.player.run[2] = list(0);
+argb_img = load_argb("data/player/run/2/360.argb");
+images.player.run[2][0] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/2/45.argb");
+images.player.run[2][1] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/2/90.argb");
+images.player.run[2][2] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/2/135.argb");
+images.player.run[2][3] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/2/180.argb");
+images.player.run[2][4] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/2/225.argb");
+images.player.run[2][5] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/2/270.argb");
+images.player.run[2][6] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/2/315.argb");
+images.player.run[2][7] = argb_to_canvas(argb_img);
+free(argb_img);
+
+images.player.run[3] = list(0);
+argb_img = load_argb("data/player/run/3/360.argb");
+images.player.run[3][0] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/3/45.argb");
+images.player.run[3][1] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/3/90.argb");
+images.player.run[3][2] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/3/135.argb");
+images.player.run[3][3] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/3/180.argb");
+images.player.run[3][4] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/3/225.argb");
+images.player.run[3][5] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/3/270.argb");
+images.player.run[3][6] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/3/315.argb");
+images.player.run[3][7] = argb_to_canvas(argb_img);
+free(argb_img);
+
+images.player.run[4] = list(0);
+argb_img = load_argb("data/player/run/4/360.argb");
+images.player.run[4][0] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/4/45.argb");
+images.player.run[4][1] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/4/90.argb");
+images.player.run[4][2] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/4/135.argb");
+images.player.run[4][3] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/4/180.argb");
+images.player.run[4][4] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/4/225.argb");
+images.player.run[4][5] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/4/270.argb");
+images.player.run[4][6] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/run/4/315.argb");
+images.player.run[4][7] = argb_to_canvas(argb_img);
+free(argb_img);
+
+// USE
+images.player.use = list(0);
+images.player.use[0] = list(0);
+argb_img = load_argb("data/player/use/0/360.argb");
+images.player.use[0][0] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/0/45.argb");
+images.player.use[0][1] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/0/90.argb");
+images.player.use[0][2] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/0/135.argb");
+images.player.use[0][3] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/0/180.argb");
+images.player.use[0][4] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/0/225.argb");
+images.player.use[0][5] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/0/270.argb");
+images.player.use[0][6] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/0/315.argb");
+images.player.use[0][7] = argb_to_canvas(argb_img);
+free(argb_img);
+
+images.player.use[1] = list(0);
+argb_img = load_argb("data/player/use/1/360.argb");
+images.player.use[1][0] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/1/45.argb");
+images.player.use[1][1] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/1/90.argb");
+images.player.use[1][2] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/1/135.argb");
+images.player.use[1][3] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/1/180.argb");
+images.player.use[1][4] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/1/225.argb");
+images.player.use[1][5] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/1/270.argb");
+images.player.use[1][6] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/1/315.argb");
+images.player.use[1][7] = argb_to_canvas(argb_img);
+free(argb_img);
+
+images.player.use[2] = list(0);
+argb_img = load_argb("data/player/use/2/360.argb");
+images.player.use[2][0] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/2/45.argb");
+images.player.use[2][1] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/2/90.argb");
+images.player.use[2][2] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/2/135.argb");
+images.player.use[2][3] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/2/180.argb");
+images.player.use[2][4] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/2/225.argb");
+images.player.use[2][5] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/2/270.argb");
+images.player.use[2][6] = argb_to_canvas(argb_img);
+free(argb_img);
+
+argb_img = load_argb("data/player/use/2/315.argb");
+images.player.use[2][7] = argb_to_canvas(argb_img);
+free(argb_img);
+
+direction = malloc(2);
+direction[0] = 0;
+direction[1] = 0;
+
+get_frame = function{
+
+    images.player.$1[$2];
+    if (less(gfdir[0], 0))
+    {
+        if (less(gfdir[1], 0))
+        {
+            images.player.$1[$2][3];
+        };
+        if (greater(gfdir[1], 0))
+        {
+            images.player.$1[$2][1];
+        };
+        if (equal(gfdir[1], 0))
+        {
+            images.player.$1[$2][2];
+        };
+    };
+    if (greater(gfdir[0], 0))
+    {
+        if (less(gfdir[1], 0))
+        {
+            images.player.$1[$2][5];
+        };
+        if (greater(gfdir[1], 0))
+        {
+            images.player.$1[$2][7];
+        };
+        if (equal(gfdir[1], 0))
+        {
+            images.player.$1[$2][6];
+        };
+    };
+    if (equal(gfdir[0], 0))
+    {
+        if (less(gfdir[1], 0))
+        {
+            images.player.$1[$2][0];
+        };
+        if (greater(gfdir[1], 0))
+        {
+            images.player.$1[$2][4];
+        };
+        if (equal(gfdir[1], 0))
+        {
+            images.player.idle[0][0];
+        };
+    };
+};
+
+while (wait_sync(win))
+{
+    fill(canvas, 0xFF005555);
+    // draw_circle(canvas, 160, 120, 50, 0x7700FF00);
+    // draw_line(canvas, 0, 0, 320, 240, 0xFF0000FF);
+    // draw_line(canvas, 320, 0, 0, 240, 0xFF0000FF);
+    // draw_rect(canvas, 10, 10, 30, 22, 0x7700FFFF);
+    
+
+    if (is_key_pressed(win, 265))
+    {
+        direction[1] = -1;
+    };
+
+    if (is_key_pressed(win, 263))
+    {
+        direction[0] = -1;
+    };
+
+    if (is_key_pressed(win, 262))
+    {
+        direction[0] = 1;
+    };
+
+    if (is_key_pressed(win, 264))
+    {
+        direction[1] = 1;
+    };
+
+    if (is_key_pressed(win, 'Q')) 
+    {
+        println("You pressed Q!");
+        ?(1, end);
+    };
+
+    get_frame(direction, "run", 0);
+    draw_sprite_blend(canvas, 128, 128, 64, 64);
+    update_window(win);
+};
+
+end:
