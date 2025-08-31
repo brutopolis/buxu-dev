@@ -1,18 +1,11 @@
-include("./lib/std.feraw");
-include("./lib/bsr.feraw");
-
-new_player = macro{
-    p = list(0);
-    p.x = $1;
-    p.y = $1;
-    return p;
-};
+include("../feraw/lib/std.feraw");
+include("../feraw/lib/bsr.feraw");
 
 anim_idle = 0;
 anim_run = 1;
 anim_use = 2;
 
-win = new_window("brutopolis", 640, 480, 0);
+win = new_window("you will be called 264", 640, 480, 0);
 canvas = get_window_canvas(win);
 
 images = list(0);
@@ -325,94 +318,157 @@ direction = malloc(2);
 direction[0] = 0;
 direction[1] = 0;
 
-get_frame = function{
+cc {
+    function(feraw_get_frame)
+    {
+        BruterList* player_images = bruter_pop_pointer(stack);
+        BruterInt direction = bruter_pop_int(stack);
+        BruterInt anim = 0;
+        
+        static BruterInt frame = 0;
 
-    images.player.$1[$2];
-    if (less(gfdir[0], 0))
-    {
-        if (less(gfdir[1], 0))
-        {
-            images.player.$1[$2][3];
-        };
-        if (greater(gfdir[1], 0))
-        {
-            images.player.$1[$2][1];
-        };
-        if (equal(gfdir[1], 0))
-        {
-            images.player.$1[$2][2];
-        };
-    };
-    if (greater(gfdir[0], 0))
-    {
-        if (less(gfdir[1], 0))
-        {
-            images.player.$1[$2][5];
-        };
-        if (greater(gfdir[1], 0))
-        {
-            images.player.$1[$2][7];
-        };
-        if (equal(gfdir[1], 0))
-        {
-            images.player.$1[$2][6];
-        };
-    };
-    if (equal(gfdir[0], 0))
-    {
-        if (less(gfdir[1], 0))
-        {
-            images.player.$1[$2][0];
-        };
-        if (greater(gfdir[1], 0))
-        {
-            images.player.$1[$2][4];
-        };
-        if (equal(gfdir[1], 0))
-        {
-            images.player.idle[0][0];
-        };
-    };
+
+    }
+}
+
+creature = macro{
+    $0 = list(0);
+    $0.position = list(0);
+    $0.position.x = 0;
+    $0.position.y = 0;
+    $0.direction = list(0);
+    $0.direction.x = 0;
+    $0.direction.y = 0;
+    $0.state = "idle";
+    $0.rotation = 0;
+    $0.frame = 0;
 };
+
+creature(player);
+
+interval = 50;
+frame_interval = 150;
+last_time = ms();
 
 while (wait_sync(win))
 {
     fill(canvas, 0xFF005555);
-    // draw_circle(canvas, 160, 120, 50, 0x7700FF00);
+    draw_circle(canvas, 160, 120, 50, 0x7700FF00);
     // draw_line(canvas, 0, 0, 320, 240, 0xFF0000FF);
     // draw_line(canvas, 320, 0, 0, 240, 0xFF0000FF);
     // draw_rect(canvas, 10, 10, 30, 22, 0x7700FFFF);
     
+    if (greater(sub(ms(), last_time), div(interval, 2)))
+    {   
+        if (is_key_pressed(win, 265))
+        {
+            player.direction[1] = -1;
+            player.position.y = sub(player.position.y, 2);
+            player.state = "run";
+        };
 
-    if (is_key_pressed(win, 265))
-    {
-        direction[1] = -1;
+        if (is_key_pressed(win, 263))
+        {
+            player.direction[0] = -1;
+            player.position.x = sub(player.position.x, 2);
+            player.state = "run";
+        };
+
+        if (is_key_pressed(win, 262))
+        {
+            player.direction[0] = 1;
+            player.position.x = add(player.position.x, 2);
+            player.state = "run";
+        };
+
+        if (is_key_pressed(win, 264))
+        {
+            player.direction[1] = 1;
+            player.position.y = add(player.position.y, 2);
+            player.state = "run";
+        };
+
+        if (is_key_pressed(win, 'Q')) 
+        {
+            println("You pressed Q!");
+            ?(1, end);
+        };
+
+        if (and(equals(player.direction[0], 0), equals(player.direction[1], 0)))
+        {
+            player.state = "idle";
+            player.frame = 0;
+        };
+        if (and(equals(player.direction[0], 1), equals(player.direction[1], 0))) 
+        {
+            // right
+            player.state = "run";
+            player.rotation = 4;
+        };
+        if (and(equals(player.direction[0], -1), equals(player.direction[1], 0))) 
+        {
+            // left
+            player.state = "run";
+            player.rotation = 0;
+        };
+        if (and(equals(player.direction[0], 0), equals(player.direction[1], 1))) 
+        {
+            // down
+            player.state = "run";
+            player.rotation = 2;
+        };
+        if (and(equals(player.direction[0], 0), equals(player.direction[1], -1))) 
+        {
+            // up
+            player.state = "run";
+            player.rotation = 6;
+        };
+        if (and(equals(player.direction[0], 1), equals(player.direction[1], 1))) 
+        {
+            // down-right
+            player.state = "run";
+            player.rotation = 3;
+        };
+        if (and(equals(player.direction[0], 1), equals(player.direction[1], -1))) 
+        {
+            // up-right
+            player.state = "run";
+            player.rotation = 5;
+        };
+        if (and(equals(player.direction[0], -1), equals(player.direction[1], 1))) 
+        {
+            // down-left
+            player.state = "run";
+            player.rotation = 1;
+        };
+        if (and(equals(player.direction[0], -1), equals(player.direction[1], -1))) 
+        {
+            // up-left
+            player.state = "run";
+            player.rotation = 7;
+        };
     };
-
-    if (is_key_pressed(win, 263))
+    
+    if (equals(strcmp(player.state, "run"), 0)) 
     {
-        direction[0] = -1;
+        if (equals(player.frame, 4))
+        {
+            player.frame = 0;
+            ?(1, outside_if);
+        };
+        if (greater(sub(ms(), last_time), frame_interval))
+        {
+            last_time = ms();
+            player.frame = add(player.frame, 1);
+        };
     };
+    outside_if:
 
-    if (is_key_pressed(win, 262))
-    {
-        direction[0] = 1;
-    };
-
-    if (is_key_pressed(win, 264))
-    {
-        direction[1] = 1;
-    };
-
-    if (is_key_pressed(win, 'Q')) 
-    {
-        println("You pressed Q!");
-        ?(1, end);
-    };
-
-    get_frame(direction, "run", 0);
-    draw_sprite_blend(canvas, 128, 128, 64, 64);
+    draw_sprite_blend(canvas, player.position.x, player.position.y, 64, 64, images["player"][player.state][player.frame][player.rotation]);
     update_window(win);
+    player.state = "idle";
+    player.direction[0] = 0;
+    player.direction[1] = 0;
 };
 
 end:

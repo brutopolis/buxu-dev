@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Billboard 360° + Camera-relative Movement + Colisão 3D</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.3/p5.js"></script>
+  <style>body{margin:0;background:#222;display:flex;align-items:center;justify-content:center;height:100vh}</style>
+</head>
+<body>
+<script>
+/*
+  Comportamento:
+  - movimento absoluto relativo à câmera (WASD / setas)
+  - sprites 360º usando os mesmos paths que você usava:
+      data/player/<state>/<frame>/<angle>.png
+    onde angle é um dos: 360,45,90,135,180,225,270,315
+  - seleção de sprite feita automaticamente com base no ângulo câmera->player
+  - colisão AABB 3D
+  - transparência correta (gl.depthMask false enquanto desenha billboard)
+*/
+
+const DIRS = [360,45,90,135,180,225,270,315]; // ordem dos seus arquivos
+const STATE_ANGLE_OFFSETS = { idle: 90, run: 90, use: 0 };
+const RUN_FRAMES = 5; // ajuste se precisar
+const USE_FRAMES = 3;
+
+let images = { player: {} };
+let player;
+let cubes = [];
+let npcs = []; // <--- novos NPCs
+const NPC_COUNT = 3;
+const NPC_SPEED = 1.2;
+const NPC_PATROL_RANGE = 80;
+let lastAnimTime = 0;
+const FRAME_INTERVAL = 120; // ms
+
+// --- preload: carrega imagens nos mesmos paths que você usava ---
+function preload(){
+  // idle (frame 0)
+  images.player.idle = [];
+  images.player.idle[0] = [];
+  for (let i=0;i<DIRS.length;i++){
+    // caminho no estilo que você usava (troque prefix se necessário)
+    images.player.idle[0][i] = safeLoad(`data/player/idle/0/png/${DIRS[i]}.png`);
+  }
+
+  // run
+  images.player.run = [];
+  for (let f=0; f<RUN_FRAMES; f++){
+    images.player.run[f] = [];
+    for (let i=0;i<DIRS.length;i++){
+      images.player.run[f][i] = safeLoad(`data/player/run/${f}/png/${DIRS[i]}.png`);
+    }
+  }
+
+  // use (opcional)
+  images.player.use = [];
+  for (let f=0; f<USE_FRAMES; f++){
+    images.player.use[f] = [];
+    for (let i=0;i<DIRS.length;i++){
+      images.player.use[f][i] = safeLoad(`data/player/use/${f}/png/${DIRS[i]}.png`);
+    }
+  }
+}
+
+// wrapper que tenta carregar e devolve placeholder se não existir
+function safeLoad(path){
+  // loadImage não lança exceção aqui, mas pode falhar silenciosamente.
+  // Criamos um graphics placeholder logo que a imagem falhar ao desenhar.
+  let img = loadImage(path, 
+    // success
+    () => {},
+    // error
+    () => {
+      // substitui a entrada por um placeholder (64x64) para não quebrar desenhar
+      img = createPlaceholder(64,64);
+    }
+  );
+  return img;
+}
+
+function createPlaceholder(w,h){
+  const g = createGraphics(w,h);
+  g.clear();
+  g.noStroke();
+  g.fill(255,0,255);
+  g.rect(0,0,w,h);
+  g.fill(255);
+  g.textAlign(CENTER,CENTER);
+  g.textSize(12);
+  g.text("no\nimg", w/2, h/2);
+  return g;
+}
+
+// --- setup ---
+function setup(){
+  createCanvas(800,600,WEBGL);
+  frameRate(60);
+
+  player = {
+    position: createVector(0, -40, 0), // y negativo acima do plano
+    state: "idle", // "idle" | "run" | "use"
+    frame: 0,
+    size: createVector(40,80,40), // pw, ph, pd
+    rotationIndex: 2, // índice 0..7 (inicial = frente/down)
+    lastFacingIndex: 2
+  };
+
+  // ajusta cubos para maior espaçamento
+  cubes.push({pos:createVector(400,-40,0), size:createVector(120,80,120)});
+  cubes.push({pos:createVector(-320,-40,160), size:createVector(100,120,100)});
+  cubes.push({pos:createVector(0,-40,480), size:createVector(60,60,60)});
+
+  // inicializa 50 NPCs com percursos aleatórios
+  for (let i=0; i<1000; i++){
+    const startCubeIndex = Math.floor(random(cubes.length));
+    const targetCubeIndex = (startCubeIndex + Math.floor(random(1, cubes.length))) % cubes.length;
+
+    const spawn = cubes[startCubeIndex].pos.copy();
+    const dest = cubes[targetCubeIndex].pos.copy();
+
+    // adiciona pequeno offset para espalhar os NPCs
+    spawn.x += random(-40, 40);
+    spawn.z += random(-40, 40);
+    dest.x += random(-40, 40);
+    dest.z += random(-40, 40);
+
+    const dirVec = p5.Vector.sub(dest, spawn).normalize();
+
+    npcs.push({
+      spawnPos: spawn,
+      targetPos: dest,
+      position: spawn.copy(),
+      state: 'run',
+      frame: 0,
+      size: createVector(40,80,40),
+      rotationIndex: 2,
+      lastFacingIndex: 2,
+      dirVec: dirVec,
+      speed: NPC_SPEED,
+      traveling: true,
+      arrivedAt: 0,
+      respawnDelay: random(800, 1500),
+      startDelay: i * 50 // escalona início para evitar sobreposição
+    });
+  }
+
+  lastAnimTime = millis();
+}
+
+// --- loop principal ---
+function draw(){
+  background(28);
+
+  orbitControl(); // mantém controle livre da câmera; sprite muda quando você mover a câmera
+  
+  push();
+  rotateX(HALF_PI);
+  noStroke();
+  fill(color(200, 200, 200)); // chão cinza claro
+  //plane(2000,2000);
+  pop();
+
+  // desenha cubos opacos primeiro
+  for (let c of cubes){
+    push();
+    translate(c.pos.x, c.pos.y, c.pos.z);
+    noStroke();
+    box(c.size.x, c.size.y, c.size.z);
+    pop();
+  }
+
+  // input (movimento absoluto relativo à câmera)
+  const move = cameraRelativeMovement(); // retorna p5.Vector (dx,dy,dz)
+  if (move.mag() > 0.001){
+    player.state = "run";
+    // tenta mover com colisão 3D
+    const next = p5.Vector.add(player.position, move);
+    if (!collides3D(next, player.size)){
+      player.position = next;
+    }
+  } else {
+    player.state = "idle";
+    player.frame = 0;
+  }
+
+  // animação de run
+  if (player.state === "run"){
+    if (millis() - lastAnimTime > FRAME_INTERVAL){
+      lastAnimTime = millis();
+      player.frame = (player.frame + 1) % images.player.run.length;
+    }
+  }
+
+  // se está parado, mantém a última direção do movimento
+  if (player.state === "idle") {
+    // aplica offset de idle na direção do último movimento
+    const offsetDeg = STATE_ANGLE_OFFSETS.idle || 0;
+    const offsetSteps = Math.round(offsetDeg / 45) % DIRS.length;
+    let idx = (player.lastFacingIndex || 2) + offsetSteps;
+    player.rotationIndex = (idx + DIRS.length) % DIRS.length;
+  } else {
+    player.rotationIndex = computeRotationIndexFromMovement(move);
+  }
+
+  // --- Atualiza e desenha NPCs (movendo entre cubos aleatórios em loop) ---
+  for (let npc of npcs){
+    // aplica startDelay (faz NPC esperar no spawn antes de partir, apenas no primeiro ciclo)
+    if (npc.startDelay && npc.startDelay > 0){
+      npc.startDelay -= deltaTime;
+      // desenha no spawn enquanto espera
+      const sprW = 96, sprH = 96;
+      const spriteP = safeSpriteAt('idle', 0, computeRotationIndexFor(createVector(0,0,1), 'idle', npc));
+      drawBillboard(npc.position, spriteP, sprW, sprH);
+      continue;
+    }
+
+    if (npc.traveling){
+      // move em direção ao target
+      const mv = p5.Vector.mult(npc.dirVec, npc.speed * (deltaTime/16.666)); // ajusta por delta frame
+      npc.position.add(mv);
+
+      // chega se estiver bem perto
+      if (p5.Vector.sub(npc.targetPos, npc.position).mag() < 6){
+        npc.traveling = false;
+        npc.arrivedAt = millis();
+      }
+
+      // animação de run corrigida
+      if (npc.state === 'run' && millis() - npc.arrivedAt > FRAME_INTERVAL){
+        npc.arrivedAt = millis();
+        npc.frame = (npc.frame + 1) % RUN_FRAMES;
+      }
+
+      // rotação com base no vetor de movimento atual
+      npc.rotationIndex = computeRotationIndexFor(npc.dirVec, 'run', npc);
+    } else {
+      // está no destino: aguarda respawnDelay e depois reseta para novo percurso
+      if (millis() - npc.arrivedAt > npc.respawnDelay){
+        const newTargetIndex = Math.floor(random(cubes.length));
+        npc.spawnPos = npc.targetPos.copy();
+        npc.targetPos = cubes[newTargetIndex].pos.copy();
+        npc.targetPos.x += random(-40, 40);
+        npc.targetPos.z += random(-40, 40);
+        npc.dirVec = p5.Vector.sub(npc.targetPos, npc.spawnPos).normalize();
+        npc.traveling = true;
+        npc.frame = 0;
+      }
+      // desenha idle no destino
+      const spriteIdle = safeSpriteAt('idle', 0, computeRotationIndexFor(createVector(0,0,1), 'idle', npc));
+      drawBillboard(npc.position, spriteIdle, 96, 96);
+      continue;
+    }
+
+    // desenha NPC (reutiliza safeSpriteAt e drawBillboard)
+    const spriteN = safeSpriteAt(npc.state === 'run' ? 'run' : 'idle', npc.frame, npc.rotationIndex);
+    drawBillboard(npc.position, spriteN, 96, 96);
+  }
+
+  // pega sprite com fallback seguro
+  const sprite = safeSpriteAt(player.state, player.frame, player.rotationIndex);
+
+  // desenha billboard com depthMask falso pra alpha correto
+  drawBillboard(player.position, sprite, 96, 96);
+
+  // debug: caixa representando o bound do player (opcional)
+   //push(); translate(player.position.x, player.position.y, player.position.z); noFill(); stroke(0,255,0); box(player.size.x, player.size.y, player.size.z); pop();
+}
+
+// --- movimento relativo à câmera (WASD ou setas) ---
+function cameraRelativeMovement(){
+  const cam = _renderer._curCamera;
+  // forward = (center - eye) no plano XZ
+  let forward = createVector(cam.centerX - cam.eyeX, 0, cam.centerZ - cam.eyeZ);
+  if (forward.mag() === 0) forward = createVector(0,0,1);
+  forward.normalize();
+  // right = perpendicular
+  let right = createVector(forward.z, 0, -forward.x);
+
+  const speed = 3;
+  let mv = createVector(0,0,0);
+
+  if (keyIsDown(87) || keyIsDown(UP_ARROW)) mv.add(p5.Vector.mult(forward, speed)); // W
+  if (keyIsDown(83) || keyIsDown(DOWN_ARROW)) mv.sub(p5.Vector.mult(forward, speed)); // S
+  if (keyIsDown(68) || keyIsDown(LEFT_ARROW)) mv.sub(p5.Vector.mult(right, speed)); // A
+  if (keyIsDown(65) || keyIsDown(RIGHT_ARROW)) mv.add(p5.Vector.mult(right, speed)); // D
+
+  // vertical control (space/shift) mantém possibilidade de colisão Y
+  if (keyIsDown(32)) mv.y -= speed;      // space sobe
+  if (keyIsDown(16)) mv.y += speed;      // shift desce
+
+  return mv;
+}
+
+// --- retorna sprite seguro (fall back placeholder se undefined) ---
+function safeSpriteAt(state, frame, rotIndex){
+  const states = images.player;
+  if (!states[state]) return createPlaceholder(96,96);
+  if (!states[state][frame]) return createPlaceholder(96,96);
+  const img = states[state][frame][rotIndex];
+  if (!img) return createPlaceholder(96,96);
+  return img;
+}
+
+// --- compute rotation index: prefer movement direction, fallback to camera ---
+function computeRotationIndexFromMovement(move){
+  const cam = _renderer._curCamera;
+  // ângulo da câmera em relação ao jogador (mesma base que antes)
+  const camDx = cam.eyeX - player.position.x;
+  const camDz = cam.eyeZ - player.position.z;
+  let angCam = degrees(atan2(camDz, camDx));
+  angCam = (angCam + 360) % 360;
+
+  // se há movimento, usamos a direção do movimento para orientar a sprite
+  if (move && move.mag() > 0.001){
+    // ângulo do vetor de movimento no espaço mundial
+    let angMove = degrees(atan2(move.z, move.x));
+    angMove = (angMove + 360) % 360;
+
+    // calculamos o ângulo relativo que o sprite deve usar comparando
+    // a posição da câmera e a direção do movimento. A fórmula abaixo
+    // faz com que a sprite aponte para a direção correta do movimento
+    let ang = (-(angMove - angCam) + 360) % 360;
+
+    // encontra índice de DIRS com menor diferença angular
+    let best = 0;
+    let bestDiff = 1e9;
+    for (let i=0;i<DIRS.length;i++){
+      const dirAngle = DIRS[i] % 360;
+      let diff = Math.abs(ang - dirAngle);
+      if (diff > 180) diff = 360 - diff;
+      if (diff < bestDiff){
+        bestDiff = diff;
+        best = i;
+      }
+    }
+    player.lastFacingIndex = best;
+    // aplica offset como deslocamento de índices (cada passo = 45°)
+    const offsetDeg = STATE_ANGLE_OFFSETS[player.state] || 0;
+    const offsetSteps = Math.round(offsetDeg / 45) % DIRS.length;
+    best = (best + offsetSteps + DIRS.length) % DIRS.length;
+    return best;
+  }
+
+  // fallback: mesma lógica anterior (apenas câmera)
+  let ang = angCam;
+  let best = 0;
+  let bestDiff = 1e9;
+  for (let i=0;i<DIRS.length;i++){
+    const dirAngle = DIRS[i] % 360; // 360 -> 0
+    let diff = Math.abs(ang - dirAngle);
+    if (diff > 180) diff = 360 - diff;
+    if (diff < bestDiff){
+      bestDiff = diff;
+      best = i;
+    }
+  }
+  player.lastFacingIndex = best;
+  return best;
+}
+
+// --- colisão AABB 3D (player pos é o centro) ---
+function collides3D(pos, size){
+  const half = {x:size.x/2, y:size.y/2, z:size.z/2};
+  for (let c of cubes){
+    const halfC = {x:c.size.x/2, y:c.size.y/2, z:c.size.z/2};
+    if (pos.x + half.x > c.pos.x - halfC.x &&
+        pos.x - half.x < c.pos.x + halfC.x &&
+        pos.y + half.y > c.pos.y - halfC.y &&
+        pos.y - half.y < c.pos.y + halfC.y &&
+        pos.z + half.z > c.pos.z - halfC.z &&
+        pos.z - half.z < c.pos.z + halfC.z){
+      return true;
+    }
+  }
+  return false;
+}
+
+// --- desenha billboard (yaw-only) com depthMask/desativado pra escrita no z-buffer ---
+function drawBillboard(pos, img, w, h){
+  const cam = _renderer._curCamera;
+  const dx = cam.eyeX - pos.x;
+  const dz = cam.eyeZ - pos.z;
+  const yaw = atan2(dx, dz);
+
+  // usar GL para controlar depth write / blending
+  const gl = (_renderer && _renderer.GL) ? _renderer.GL : null;
+  if (gl){
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false); // não escrever no depth buffer
+  }
+
+  push();
+  translate(pos.x, pos.y, pos.z);
+  rotateY(yaw);
+  noStroke();
+  // importante: não chamar fill() antes de texture()
+  texture(img);
+  plane(w, h);
+  pop();
+
+  if (gl) gl.depthMask(true);
+}
+
+// tecla Q para parar
+function keyPressed(){
+  if (key === 'q' || key === 'Q') noLoop();
+}
+
+// --- compute rotation index genérico para entidades (sem tocar em player) ---
+function computeRotationIndexFor(move, state, ent){
+  const cam = _renderer._curCamera;
+  // ângulo da câmera em relação à entidade
+  const camDx = cam.eyeX - ent.position.x;
+  const camDz = cam.eyeZ - ent.position.z;
+  let angCam = degrees(atan2(camDz, camDx));
+  angCam = (angCam + 360) % 360;
+
+  if (move && move.mag() > 0.001){
+    let angMove = degrees(atan2(move.z, move.x));
+    angMove = (angMove + 360) % 360;
+    let ang = (-(angMove - angCam) + 360) % 360;
+
+    let best = 0;
+    let bestDiff = 1e9;
+    for (let i=0;i<DIRS.length;i++){
+      const dirAngle = DIRS[i] % 360;
+      let diff = Math.abs(ang - dirAngle);
+      if (diff > 180) diff = 360 - diff;
+      if (diff < bestDiff){ bestDiff = diff; best = i; }
+    }
+    ent.lastFacingIndex = best;
+    const offsetDeg = STATE_ANGLE_OFFSETS[state] || 0;
+    const offsetSteps = Math.round(offsetDeg / 45) % DIRS.length;
+    best = (best + offsetSteps + DIRS.length) % DIRS.length;
+    return best;
+  }
+
+  // fallback para câmera
+  let ang = angCam;
+  let best = 0;
+  let bestDiff = 1e9;
+  for (let i=0;i<DIRS.length;i++){
+    const dirAngle = DIRS[i] % 360;
+    let diff = Math.abs(ang - dirAngle);
+    if (diff > 180) diff = 360 - diff;
+    if (diff < bestDiff){ bestDiff = diff; best = i; }
+  }
+  ent.lastFacingIndex = best;
+  return best;
+}
+</script>
+</body>
+</html>
