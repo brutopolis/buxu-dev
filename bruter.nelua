@@ -1,0 +1,37 @@
+-- nelua bruter experiment
+
+require "sequence"
+require "io"
+
+## if (#usize == 8) then
+    local BruterValue = @union{
+        i: int64,
+        u: uint64,
+        f: float64,
+        p: pointer,
+        s: stringbuilder
+    }
+## else
+    local BruterValue = @union{
+        i: int32,
+        u: uint32,
+        f: float32,
+        p: pointer,
+        s: stringbuilder
+    }
+## end
+
+local BruterList = @record{
+    values: sequence(BruterValue),
+    keys: sequence(string),
+    types: sequence(byte)
+}
+
+function BruterList:interpret(str: string)
+    print("position", str:find("A"))
+end
+
+local lista: BruterList;
+lista.values:push((@BruterValue){i = 50})
+
+lista:interpret("asdaksdmakdmka?AdaksdmakmdAdasmdaksmdlakdmsamA")
