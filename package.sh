@@ -30,4 +30,19 @@ debug()
     ./brutopolis.exe
 }
 
+nelua_debug()
+{
+    nelua bruter.nelua
+
+    gcc -o main ~/.cache/nelua/bruter.c -g -O0
+
+    valgrind \
+    --leak-check=full \
+    --show-leak-kinds=definite \
+    --track-origins=yes \
+    --log-file=./valgrind-out.txt \
+    --verbose \
+    ./main
+}
+
 "$@"

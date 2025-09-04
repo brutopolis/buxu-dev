@@ -2,6 +2,10 @@
 
 require "sequence"
 require "io"
+require "string"
+require "C.stdlib"
+require "C.string"
+
 
 ## if (#usize == 8) then
     local BruterValue = @union{
@@ -9,7 +13,7 @@ require "io"
         u: uint64,
         f: float64,
         p: pointer,
-        s: stringbuilder
+        s: cstring
     }
 ## else
     local BruterValue = @union{
@@ -17,7 +21,7 @@ require "io"
         u: uint32,
         f: float32,
         p: pointer,
-        s: stringbuilder
+        s: cstring
     }
 ## end
 
@@ -31,7 +35,18 @@ function BruterList:interpret(str: string)
     print("position", str:find("A"))
 end
 
-local lista: BruterList;
-lista.values:push((@BruterValue){i = 50})
+-- sequences works well, but
+-- for some reason sequence is generating some invalid acess errors on valgrind
+-- need to fix that ASAP
+local vs: sequence(integer);
+vs:push(564650);
+print(vs[1]);
 
-lista:interpret("asdaksdmakdmka?AdaksdmakmdAdasmdaksmdlakdmsamA")
+local strtest = "asdaksdmakdmka?AdaksdmakmdAdasmdaksmdlakdmsamA";
+local buf = C.strdup(strtest);
+
+local function strtok(str: cstring, delim: cstring <const>): cstring <cimport, nodecl, cinclude '<string.h>'>
+end
+
+
+C.free(buf);
